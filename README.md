@@ -1,6 +1,6 @@
 ## Project info
 
-**URL**: https://dorm-dynamo-sync.lovable.app/security
+**URL**: https://hostel-flow-mvp.lovable.app/
 ## What technologies are used for this project?
 
 This project is built with:
