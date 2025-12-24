@@ -1,0 +1,500 @@
+import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { WardenNav } from '@/components/layout/WardenNav';
+import { useAuth } from '@/contexts/AuthContext';
+import { StatCard } from '@/components/ui/stat-card';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Users, Ticket, Wrench, AlertTriangle, Clock, CheckCircle2, XCircle,
+  Search, BarChart3, TrendingUp
+} from 'lucide-react';
+import {
+  getTodayAttendance, getGatePasses, getTickets, updateGatePass, updateTicket, generateQRCode, getHostelmates
+} from '@/lib/storage';
+import { GatePass, MaintenanceTicket, AttendanceRecord } from '@/types/hostel';
+import { useToast } from '@/hooks/use-toast';
+
+const WardenDashboard = () => {
+  const todayAttendance = getTodayAttendance();
+  const totalStudents = getHostelmates().length;
+  const presentToday = new Set(todayAttendance.filter(r => r.type === 'check-in').map(r => r.userId)).size;
+  const attendancePercent = totalStudents > 0 ? Math.round((presentToday / totalStudents) * 100) : 0;
+  
+  const pendingPasses = getGatePasses().filter(p => p.status === 'pending').length;
+  const activeTickets = getTickets().filter(t => t.status !== 'resolved').length;
+  
+  // Late comers (not checked in by simulated 10 PM check)
+  const lateComers = totalStudents - presentToday;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold">Warden Dashboard</h1>
+        <p className="text-muted-foreground">Real-time hostel overview</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Attendance Today"
+          value={`${attendancePercent}%`}
+          description={`${presentToday}/${totalStudents} students`}
+          icon={<Users className="w-5 h-5" />}
+          variant="success"
+        />
+        <StatCard
+          title="Pending Passes"
+          value={pendingPasses}
+          description="Awaiting approval"
+          icon={<Ticket className="w-5 h-5" />}
+          variant={pendingPasses > 0 ? 'warning' : 'default'}
+        />
+        <StatCard
+          title="Active Complaints"
+          value={activeTickets}
+          description="Unresolved issues"
+          icon={<Wrench className="w-5 h-5" />}
+          variant={activeTickets > 0 ? 'primary' : 'default'}
+        />
+        <StatCard
+          title="Late Comers"
+          value={lateComers}
+          description="Not checked in"
+          icon={<AlertTriangle className="w-5 h-5" />}
+          variant={lateComers > 0 ? 'destructive' : 'success'}
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-lg">Recent Attendance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {todayAttendance.slice(0, 5).map((record) => (
+                <div key={record.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center text-success text-xs font-semibold">
+                      {record.userName.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{record.userName}</p>
+                      <p className="text-xs text-muted-foreground">{record.roomNumber}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <StatusBadge status={record.type} />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(record.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {todayAttendance.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No attendance records today</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-lg">Pending Approvals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {getGatePasses().filter(p => p.status === 'pending').slice(0, 5).map((pass) => (
+                <div key={pass.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div>
+                    <p className="text-sm font-medium">{pass.userName}</p>
+                    <p className="text-xs text-muted-foreground">{pass.destination}</p>
+                  </div>
+                  <StatusBadge status={pass.status} />
+                </div>
+              ))}
+              {getGatePasses().filter(p => p.status === 'pending').length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No pending approvals</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const AttendanceListPage = () => {
+  const [search, setSearch] = useState('');
+  const attendance = getTodayAttendance();
+  
+  const filtered = attendance.filter(r =>
+    r.userName.toLowerCase().includes(search.toLowerCase()) ||
+    r.roomNumber.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold">Today's Attendance</h1>
+        <p className="text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      </div>
+
+      <Card className="shadow-card">
+        <CardContent className="pt-6">
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or room..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <div className="space-y-2">
+            {filtered.map((record) => (
+              <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                    {record.userName.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-medium">{record.userName}</p>
+                    <p className="text-sm text-muted-foreground">{record.roomNumber}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <StatusBadge status={record.type} />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(record.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {filtered.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">No attendance records found</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const GatePassManagement = () => {
+  const { toast } = useToast();
+  const [passes, setPasses] = useState<GatePass[]>([]);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'denied'>('all');
+
+  useEffect(() => {
+    setPasses(getGatePasses());
+  }, []);
+
+  const handleApprove = (id: string) => {
+    const qrCode = generateQRCode(id);
+    updateGatePass(id, { status: 'approved', qrCode, approvedAt: new Date().toISOString() });
+    setPasses(getGatePasses());
+    toast({
+      title: 'Gate Pass Approved',
+      description: 'QR code has been generated for the student',
+    });
+  };
+
+  const handleDeny = (id: string) => {
+    updateGatePass(id, { status: 'denied' });
+    setPasses(getGatePasses());
+    toast({
+      title: 'Gate Pass Denied',
+      description: 'The request has been rejected',
+    });
+  };
+
+  const filtered = passes.filter(p => filter === 'all' || p.status === filter)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold">Gate Pass Requests</h1>
+        <p className="text-muted-foreground">Approve or deny leave requests</p>
+      </div>
+
+      <div className="flex gap-2">
+        <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Requests</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="denied">Denied</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-3">
+        {filtered.map((pass) => (
+          <Card key={pass.id} className="shadow-card">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium">{pass.userName}</p>
+                    <StatusBadge status={pass.status} />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Room {pass.roomNumber}</p>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm"><span className="text-muted-foreground">Destination:</span> {pass.destination}</p>
+                    <p className="text-sm"><span className="text-muted-foreground">Reason:</span> {pass.reason}</p>
+                    <p className="text-sm flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(pass.departureDate).toLocaleDateString()} - {new Date(pass.expectedReturn).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                
+                {pass.status === 'pending' && (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="success" onClick={() => handleApprove(pass.id)}>
+                      <CheckCircle2 className="w-4 h-4" />
+                      Approve
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDeny(pass.id)}>
+                      <XCircle className="w-4 h-4" />
+                      Deny
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {filtered.length === 0 && (
+          <Card className="shadow-card">
+            <CardContent className="py-8 text-center">
+              <Ticket className="w-12 h-12 mx-auto text-muted-foreground/50" />
+              <p className="mt-3 text-muted-foreground">No gate pass requests found</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ComplaintsManagement = () => {
+  const { toast } = useToast();
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'in-progress' | 'resolved'>('all');
+
+  useEffect(() => {
+    setTickets(getTickets());
+  }, []);
+
+  const handleAssign = (id: string, assignee: string) => {
+    updateTicket(id, { status: 'in-progress', assignedTo: assignee });
+    setTickets(getTickets());
+    toast({
+      title: 'Technician Assigned',
+      description: `Ticket assigned to ${assignee}`,
+    });
+  };
+
+  const handleResolve = (id: string) => {
+    updateTicket(id, { status: 'resolved' });
+    setTickets(getTickets());
+    toast({
+      title: 'Ticket Resolved',
+      description: 'The complaint has been marked as resolved',
+    });
+  };
+
+  const filtered = tickets.filter(t => filter === 'all' || t.status === filter)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold">Complaints</h1>
+        <p className="text-muted-foreground">Manage maintenance tickets</p>
+      </div>
+
+      <div className="flex gap-2">
+        <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Tickets</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="in-progress">In Progress</SelectItem>
+            <SelectItem value="resolved">Resolved</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-3">
+        {filtered.map((ticket) => (
+          <Card key={ticket.id} className="shadow-card">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium capitalize">{ticket.category}</p>
+                    <StatusBadge status={ticket.status} />
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      ticket.priority === 'high' ? 'bg-destructive/10 text-destructive' :
+                      ticket.priority === 'medium' ? 'bg-warning/10 text-warning' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {ticket.priority}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{ticket.userName} • Room {ticket.roomNumber}</p>
+                  <p className="text-sm mt-2">{ticket.description}</p>
+                  {ticket.assignedTo && (
+                    <p className="text-xs text-muted-foreground mt-2">Assigned to: {ticket.assignedTo}</p>
+                  )}
+                </div>
+                
+                <div className="flex gap-2">
+                  {ticket.status === 'pending' && (
+                    <Button size="sm" variant="outline" onClick={() => handleAssign(ticket.id, 'Maintenance Staff')}>
+                      Assign
+                    </Button>
+                  )}
+                  {ticket.status !== 'resolved' && (
+                    <Button size="sm" variant="success" onClick={() => handleResolve(ticket.id)}>
+                      Resolve
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {filtered.length === 0 && (
+          <Card className="shadow-card">
+            <CardContent className="py-8 text-center">
+              <Wrench className="w-12 h-12 mx-auto text-muted-foreground/50" />
+              <p className="mt-3 text-muted-foreground">No complaints found</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const AnalyticsPage = () => {
+  const todayAttendance = getTodayAttendance();
+  const totalStudents = getHostelmates().length;
+  const presentToday = new Set(todayAttendance.filter(r => r.type === 'check-in').map(r => r.userId)).size;
+  const tickets = getTickets();
+  const passes = getGatePasses();
+
+  const ticketsByCategory = {
+    plumbing: tickets.filter(t => t.category === 'plumbing').length,
+    electrical: tickets.filter(t => t.category === 'electrical').length,
+    wifi: tickets.filter(t => t.category === 'wifi').length,
+    furniture: tickets.filter(t => t.category === 'furniture').length,
+    other: tickets.filter(t => t.category === 'other').length,
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold">Analytics</h1>
+        <p className="text-muted-foreground">Hostel statistics and insights</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              Attendance Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{Math.round((presentToday / totalStudents) * 100)}%</p>
+            <p className="text-sm text-muted-foreground">{presentToday} of {totalStudents} students present</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-primary" />
+              Complaint Resolution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{tickets.filter(t => t.status === 'resolved').length}/{tickets.length}</p>
+            <p className="text-sm text-muted-foreground">Tickets resolved</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Ticket className="w-4 h-4 text-primary" />
+              Gate Pass Approval
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{passes.filter(p => p.status === 'approved').length}/{passes.length}</p>
+            <p className="text-sm text-muted-foreground">Passes approved</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            Complaints by Category
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Object.entries(ticketsByCategory).map(([category, count]) => (
+              <div key={category} className="flex items-center gap-3">
+                <span className="text-sm capitalize w-20">{category}</span>
+                <div className="flex-1 h-6 bg-secondary rounded-full overflow-hidden">
+                  <div 
+                    className="h-full gradient-primary rounded-full transition-all duration-500"
+                    style={{ width: `${tickets.length > 0 ? (count / tickets.length) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className="text-sm font-medium w-8 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export const WardenDashboardPage = () => {
+  return (
+    <AppLayout navigation={<WardenNav />}>
+      <Routes>
+        <Route index element={<WardenDashboard />} />
+        <Route path="attendance" element={<AttendanceListPage />} />
+        <Route path="gate-passes" element={<GatePassManagement />} />
+        <Route path="complaints" element={<ComplaintsManagement />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="*" element={<Navigate to="/warden" replace />} />
+      </Routes>
+    </AppLayout>
+  );
+};
