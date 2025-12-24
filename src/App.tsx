@@ -19,27 +19,33 @@ const AppRoutes = () => {
     return <RoleSelector />;
   }
 
+  // Redirect based on role - always redirect to the correct dashboard
+  const getRoleBasedRedirect = () => {
+    switch (user?.role) {
+      case 'student':
+        return '/student';
+      case 'warden':
+        return '/warden';
+      case 'security':
+        return '/security';
+      default:
+        return '/';
+    }
+  };
+
   return (
     <Routes>
       {user?.role === 'student' && (
-        <>
-          <Route path="/student/*" element={<StudentDashboardPage />} />
-          <Route path="/" element={<Navigate to="/student" replace />} />
-        </>
+        <Route path="/student/*" element={<StudentDashboardPage />} />
       )}
       {user?.role === 'warden' && (
-        <>
-          <Route path="/warden/*" element={<WardenDashboardPage />} />
-          <Route path="/" element={<Navigate to="/warden" replace />} />
-        </>
+        <Route path="/warden/*" element={<WardenDashboardPage />} />
       )}
       {user?.role === 'security' && (
-        <>
-          <Route path="/security" element={<SecurityDashboardPage />} />
-          <Route path="/" element={<Navigate to="/security" replace />} />
-        </>
+        <Route path="/security" element={<SecurityDashboardPage />} />
       )}
-      <Route path="*" element={<NotFound />} />
+      {/* Catch-all: redirect to the appropriate dashboard based on role */}
+      <Route path="*" element={<Navigate to={getRoleBasedRedirect()} replace />} />
     </Routes>
   );
 };
