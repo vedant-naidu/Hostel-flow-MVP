@@ -394,25 +394,92 @@ const ComplaintsManagement = () => {
 };
 
 const AnalyticsPage = () => {
+  const todayAttendance = getTodayAttendance();
+  const totalStudents = getHostelmates().length;
+  const presentToday = new Set(todayAttendance.filter(r => r.type === 'check-in').map(r => r.userId)).size;
+  const tickets = getTickets();
+  const passes = getGatePasses();
+
+  const ticketsByCategory = {
+    plumbing: tickets.filter(t => t.category === 'plumbing').length,
+    electrical: tickets.filter(t => t.category === 'electrical').length,
+    wifi: tickets.filter(t => t.category === 'wifi').length,
+    furniture: tickets.filter(t => t.category === 'furniture').length,
+    other: tickets.filter(t => t.category === 'other').length,
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
+        <h1 className="text-2xl font-bold">Analytics</h1>
         <p className="text-muted-foreground">Hostel statistics and insights</p>
       </div>
 
-      <div className="w-full bg-card rounded-xl border border-border overflow-hidden shadow-card">
-        <iframe 
-          width="100%" 
-          height="600" 
-          src="https://lookerstudio.google.com/embed/reporting/aac32f95-aea3-437b-87dc-c5dd648504ea/page/CKojF" 
-          frameBorder="0" 
-          style={{ border: 0, minHeight: '600px' }}
-          allowFullScreen
-          sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          title="Analytics Dashboard"
-        />
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              Attendance Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{Math.round((presentToday / totalStudents) * 100)}%</p>
+            <p className="text-sm text-muted-foreground">{presentToday} of {totalStudents} students present</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-primary" />
+              Complaint Resolution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{tickets.filter(t => t.status === 'resolved').length}/{tickets.length}</p>
+            <p className="text-sm text-muted-foreground">Tickets resolved</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Ticket className="w-4 h-4 text-primary" />
+              Gate Pass Approval
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{passes.filter(p => p.status === 'approved').length}/{passes.length}</p>
+            <p className="text-sm text-muted-foreground">Passes approved</p>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            Complaints by Category
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Object.entries(ticketsByCategory).map(([category, count]) => (
+              <div key={category} className="flex items-center gap-3">
+                <span className="text-sm capitalize w-20">{category}</span>
+                <div className="flex-1 h-6 bg-secondary rounded-full overflow-hidden">
+                  <div 
+                    className="h-full gradient-primary rounded-full transition-all duration-500"
+                    style={{ width: `${tickets.length > 0 ? (count / tickets.length) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className="text-sm font-medium w-8 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

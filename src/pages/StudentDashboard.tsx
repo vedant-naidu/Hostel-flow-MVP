@@ -110,31 +110,6 @@ const DirectoryPage = () => (
   </div>
 );
 
-const ReportIssuePage = () => (
-  <div className="space-y-6 animate-fade-in">
-    <div>
-      <h1 className="text-2xl font-bold">Report Issue</h1>
-      <p className="text-muted-foreground">Submit an issue or feedback using the form below</p>
-    </div>
-    <div className="bg-card rounded-xl border border-border p-4 shadow-card">
-      <div className="w-full flex justify-center">
-        <iframe 
-          src="https://docs.google.com/forms/d/e/1FAIpQLSeLcIwoVkviVk1zw0-NH6rQeayTFKVEt13sKubFhTNrPcyfww/viewform?embedded=true" 
-          width="640" 
-          height="1048" 
-          frameBorder="0" 
-          marginHeight={0} 
-          marginWidth={0}
-          className="max-w-full"
-          title="Report Issue Form"
-        >
-          Loading…
-        </iframe>
-      </div>
-    </div>
-  </div>
-);
-
 export const StudentDashboardPage = () => {
   return (
     <AppLayout navigation={<StudentNav />}>
@@ -144,7 +119,6 @@ export const StudentDashboardPage = () => {
         <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="gate-pass" element={<GatePassPage />} />
         <Route path="directory" element={<DirectoryPage />} />
-        <Route path="report-issue" element={<ReportIssuePage />} />
         <Route path="*" element={<Navigate to="/student" replace />} />
       </Routes>
     </AppLayout>

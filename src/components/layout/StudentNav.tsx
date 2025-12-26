@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { MapPin, Wrench, Ticket, Users, LayoutDashboard, AlertCircle } from 'lucide-react';
+import { MapPin, Wrench, Ticket, Users, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -8,7 +8,6 @@ const navItems = [
   { to: '/student/maintenance', icon: Wrench, label: 'Maintenance' },
   { to: '/student/gate-pass', icon: Ticket, label: 'Gate Pass' },
   { to: '/student/directory', icon: Users, label: 'Directory' },
-  { to: '/student/report-issue', icon: AlertCircle, label: 'Report Issue' },
 ];
 
 export const StudentNav = () => {
