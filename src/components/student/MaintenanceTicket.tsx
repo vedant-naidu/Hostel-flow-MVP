@@ -2,13 +2,11 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Wrench, Send, Wifi, Droplets, Zap, Armchair, HelpCircle } from 'lucide-react';
-import { addTicket, getTickets } from '@/lib/storage';
-import { MaintenanceTicket } from '@/types/hostel';
+import { useMaintenanceTickets, MaintenanceTicket } from '@/hooks/useDatabase';
 import { useToast } from '@/hooks/use-toast';
 import { StatusBadge } from '@/components/ui/status-badge';
 
@@ -21,41 +19,48 @@ const categoryIcons = {
 };
 
 export const MaintenanceForm = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { addTicket } = useMaintenanceTickets();
   const [category, setCategory] = useState<MaintenanceTicket['category']>('wifi');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<MaintenanceTicket['priority']>('medium');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !description.trim()) return;
+    if (!user || !profile || !description.trim()) return;
 
     setIsSubmitting(true);
 
-    const ticket: MaintenanceTicket = {
-      id: `ticket-${Date.now()}`,
-      userId: user.id,
-      userName: user.name,
-      roomNumber: user.roomNumber || 'N/A',
-      category,
-      description: description.trim(),
-      status: 'pending',
-      priority,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      await addTicket({
+        user_id: user.id,
+        user_name: profile.name,
+        room_number: profile.room_number || 'N/A',
+        category,
+        description: description.trim(),
+        status: 'pending',
+        priority,
+        assigned_to: null,
+        resolution: null,
+      });
+      
+      toast({
+        title: 'Ticket Submitted',
+        description: 'Your maintenance request has been logged',
+      });
 
-    addTicket(ticket);
-    
-    toast({
-      title: 'Ticket Submitted',
-      description: 'Your maintenance request has been logged',
-    });
-
-    setDescription('');
-    setIsSubmitting(false);
+      setDescription('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to submit ticket. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -139,7 +144,7 @@ export const MaintenanceForm = () => {
 
           <Button type="submit" className="w-full" disabled={isSubmitting || !description.trim()}>
             <Send className="w-4 h-4" />
-            Submit Ticket
+            {isSubmitting ? 'Submitting...' : 'Submit Ticket'}
           </Button>
         </form>
       </CardContent>
@@ -148,10 +153,18 @@ export const MaintenanceForm = () => {
 };
 
 export const MaintenanceList = () => {
-  const { user } = useAuth();
-  const tickets = getTickets().filter(t => t.userId === user?.id).sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const { getUserTickets, isLoading } = useMaintenanceTickets();
+  const tickets = getUserTickets();
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-card animate-fade-in">
+        <CardContent className="py-8 text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (tickets.length === 0) {
     return (
@@ -182,9 +195,9 @@ export const MaintenanceList = () => {
                   </div>
                   <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{ticket.description}</p>
                   <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                    <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
-                    {ticket.assignedTo && (
-                      <span>Assigned: {ticket.assignedTo}</span>
+                    <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
+                    {ticket.assigned_to && (
+                      <span>Assigned: {ticket.assigned_to}</span>
                     )}
                   </div>
                 </div>

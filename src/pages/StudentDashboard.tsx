@@ -8,20 +8,24 @@ import { GatePassForm, GatePassList } from '@/components/student/GatePassRequest
 import { HostelDirectory } from '@/components/student/HostelDirectory';
 import { StatCard } from '@/components/ui/stat-card';
 import { MapPin, Ticket, Wrench, Users } from 'lucide-react';
-import { getTodayAttendance, getUserGatePasses, getTickets } from '@/lib/storage';
+import { useAttendanceRecords, useGatePasses, useMaintenanceTickets, useHostelmates } from '@/hooks/useDatabase';
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
-  const todayAttendance = getTodayAttendance();
-  const userCheckedIn = todayAttendance.some(r => r.userId === user?.id);
-  const pendingPasses = getUserGatePasses(user?.id || '').filter(p => p.status === 'pending').length;
-  const activeTickets = getTickets().filter(t => t.userId === user?.id && t.status !== 'resolved').length;
+  const { user, profile } = useAuth();
+  const { getTodayRecord } = useAttendanceRecords();
+  const { getUserPasses } = useGatePasses();
+  const { getUserTickets } = useMaintenanceTickets();
+  const { hostelmates } = useHostelmates();
+  
+  const userCheckedIn = !!getTodayRecord();
+  const pendingPasses = getUserPasses().filter(p => p.status === 'pending').length;
+  const activeTickets = getUserTickets().filter(t => t.status !== 'resolved').length;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold">Welcome, {user?.name?.split(' ')[0]}</h1>
-        <p className="text-muted-foreground">Room {user?.roomNumber} • {user?.hostelBlock}</p>
+        <h1 className="text-2xl font-bold">Welcome, {profile?.name?.split(' ')[0]}</h1>
+        <p className="text-muted-foreground">Room {profile?.room_number} • {profile?.hostel_block}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -45,7 +49,7 @@ const StudentDashboard = () => {
         />
         <StatCard
           title="Hostelmates"
-          value="8"
+          value={hostelmates.length}
           icon={<Users className="w-5 h-5" />}
         />
       </div>
