@@ -14,16 +14,300 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance_records: {
+        Row: {
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          room_number: string
+          selfie_url: string | null
+          timestamp: string
+          type: string
+          user_id: string
+          user_name: string
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          room_number: string
+          selfie_url?: string | null
+          timestamp?: string
+          type: string
+          user_id: string
+          user_name: string
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          room_number?: string
+          selfie_url?: string | null
+          timestamp?: string
+          type?: string
+          user_id?: string
+          user_name?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
+      gate_passes: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          departure_date: string
+          destination: string
+          entry_time: string | null
+          exit_time: string | null
+          expected_return: string
+          id: string
+          qr_code: string | null
+          reason: string
+          room_number: string
+          status: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          departure_date: string
+          destination: string
+          entry_time?: string | null
+          exit_time?: string | null
+          expected_return: string
+          id?: string
+          qr_code?: string | null
+          reason: string
+          room_number: string
+          status?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          departure_date?: string
+          destination?: string
+          entry_time?: string | null
+          exit_time?: string | null
+          expected_return?: string
+          id?: string
+          qr_code?: string | null
+          reason?: string
+          room_number?: string
+          status?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
+      hostelmates: {
+        Row: {
+          course: string | null
+          created_at: string
+          hostel_block: string
+          id: string
+          name: string
+          room_number: string
+          user_id: string | null
+          year: string | null
+        }
+        Insert: {
+          course?: string | null
+          created_at?: string
+          hostel_block: string
+          id?: string
+          name: string
+          room_number: string
+          user_id?: string | null
+          year?: string | null
+        }
+        Update: {
+          course?: string | null
+          created_at?: string
+          hostel_block?: string
+          id?: string
+          name?: string
+          room_number?: string
+          user_id?: string | null
+          year?: string | null
+        }
+        Relationships: []
+      }
+      maintenance_tickets: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          priority: string
+          resolution: string | null
+          room_number: string
+          status: string
+          updated_at: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string
+          resolution?: string | null
+          room_number: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string
+          resolution?: string | null
+          room_number?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
+      movement_logs: {
+        Row: {
+          created_at: string
+          gate_pass_id: string
+          id: string
+          scanned_by: string
+          timestamp: string
+          type: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          gate_pass_id: string
+          id?: string
+          scanned_by: string
+          timestamp?: string
+          type: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          gate_pass_id?: string
+          id?: string
+          scanned_by?: string
+          timestamp?: string
+          type?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movement_logs_gate_pass_id_fkey"
+            columns: ["gate_pass_id"]
+            isOneToOne: false
+            referencedRelation: "gate_passes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          hostel_block: string | null
+          id: string
+          name: string
+          profile_image: string | null
+          room_number: string | null
+          student_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          hostel_block?: string | null
+          id?: string
+          name: string
+          profile_image?: string | null
+          room_number?: string | null
+          student_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          hostel_block?: string | null
+          id?: string
+          name?: string
+          profile_image?: string | null
+          room_number?: string | null
+          student_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "student" | "warden" | "security"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +434,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["student", "warden", "security"],
+    },
   },
 } as const

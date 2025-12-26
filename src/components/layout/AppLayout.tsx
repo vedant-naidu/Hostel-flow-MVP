@@ -11,11 +11,11 @@ interface AppLayoutProps {
 }
 
 export const AppLayout = ({ children, navigation }: AppLayoutProps) => {
-  const { user, logout } = useAuth();
+  const { profile, role, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const getRoleBadge = () => {
-    switch (user?.role) {
+    switch (role) {
       case 'student':
         return 'Student';
       case 'warden':
@@ -65,11 +65,11 @@ export const AppLayout = ({ children, navigation }: AppLayoutProps) => {
 
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium">{user?.name}</p>
+              <p className="text-sm font-medium">{profile?.name}</p>
               <p className="text-xs text-muted-foreground">{getRoleBadge()}</p>
             </div>
             <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-              {user?.name?.charAt(0)}
+              {profile?.name?.charAt(0)}
             </div>
             <Button variant="ghost" size="icon" onClick={logout}>
               <LogOut className="w-4 h-4" />

@@ -5,52 +5,57 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Ticket, Send, QrCode, Clock, CheckCircle2, XCircle } from 'lucide-react';
-import { addGatePass, getUserGatePasses } from '@/lib/storage';
-import { GatePass } from '@/types/hostel';
+import { Ticket, Send, QrCode, Clock } from 'lucide-react';
+import { useGatePasses } from '@/hooks/useDatabase';
 import { useToast } from '@/hooks/use-toast';
 import { StatusBadge } from '@/components/ui/status-badge';
 
 export const GatePassForm = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { addGatePass } = useGatePasses();
   const [reason, setReason] = useState('');
   const [destination, setDestination] = useState('');
   const [departureDate, setDepartureDate] = useState('');
   const [expectedReturn, setExpectedReturn] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !reason.trim() || !destination.trim() || !departureDate || !expectedReturn) return;
+    if (!user || !profile || !reason.trim() || !destination.trim() || !departureDate || !expectedReturn) return;
 
     setIsSubmitting(true);
 
-    const gatePass: GatePass = {
-      id: `gp-${Date.now()}`,
-      userId: user.id,
-      userName: user.name,
-      roomNumber: user.roomNumber || 'N/A',
-      reason: reason.trim(),
-      destination: destination.trim(),
-      departureDate,
-      expectedReturn,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      await addGatePass({
+        user_id: user.id,
+        user_name: profile.name,
+        room_number: profile.room_number || 'N/A',
+        reason: reason.trim(),
+        destination: destination.trim(),
+        departure_date: departureDate,
+        expected_return: expectedReturn,
+        status: 'pending',
+      });
+      
+      toast({
+        title: 'Gate Pass Requested',
+        description: 'Your request has been sent to the warden for approval',
+      });
 
-    addGatePass(gatePass);
-    
-    toast({
-      title: 'Gate Pass Requested',
-      description: 'Your request has been sent to the warden for approval',
-    });
-
-    setReason('');
-    setDestination('');
-    setDepartureDate('');
-    setExpectedReturn('');
-    setIsSubmitting(false);
+      setReason('');
+      setDestination('');
+      setDepartureDate('');
+      setExpectedReturn('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to submit gate pass request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -112,7 +117,7 @@ export const GatePassForm = () => {
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             <Send className="w-4 h-4" />
-            Submit Request
+            {isSubmitting ? 'Submitting...' : 'Submit Request'}
           </Button>
         </form>
       </CardContent>
@@ -121,16 +126,18 @@ export const GatePassForm = () => {
 };
 
 export const GatePassList = () => {
-  const { user } = useAuth();
-  const [passes, setPasses] = useState<GatePass[]>([]);
+  const { getUserPasses, isLoading } = useGatePasses();
+  const passes = getUserPasses();
 
-  useEffect(() => {
-    if (user) {
-      setPasses(getUserGatePasses(user.id).sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ));
-    }
-  }, [user]);
+  if (isLoading) {
+    return (
+      <Card className="shadow-card animate-fade-in">
+        <CardContent className="py-8 text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (passes.length === 0) {
     return (
@@ -158,7 +165,7 @@ export const GatePassList = () => {
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {new Date(pass.departureDate).toLocaleDateString()} - {new Date(pass.expectedReturn).toLocaleDateString()}
+                    {new Date(pass.departure_date).toLocaleDateString()} - {new Date(pass.expected_return).toLocaleDateString()}
                   </span>
                 </div>
               </div>

@@ -3,8 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, CheckCircle2, XCircle, Camera, Loader2 } from 'lucide-react';
-import { addAttendanceRecord, getTodayAttendance } from '@/lib/storage';
-import { AttendanceRecord } from '@/types/hostel';
+import { useAttendanceRecords } from '@/hooks/useDatabase';
 import { useToast } from '@/hooks/use-toast';
 
 // Simulated hostel location (can be adjusted)
@@ -30,21 +29,20 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 export const AttendanceCheckIn = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { addRecord, getTodayRecord } = useAttendanceRecords();
   const [isChecking, setIsChecking] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'checking' | 'verified' | 'outside'>('idle');
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
+  const [todayRecord, setTodayRecord] = useState<any | null>(null);
 
   useEffect(() => {
-    // Check if already checked in today
-    const records = getTodayAttendance();
-    const userRecord = records.find(r => r.userId === user?.id && r.type === 'check-in');
-    if (userRecord) {
-      setTodayRecord(userRecord);
+    const record = getTodayRecord();
+    if (record) {
+      setTodayRecord(record);
     }
-  }, [user]);
+  }, [getTodayRecord]);
 
   const checkLocation = () => {
     setLocationStatus('checking');
@@ -65,21 +63,7 @@ export const AttendanceCheckIn = () => {
       (position) => {
         const { latitude, longitude } = position.coords;
         setCurrentLocation({ latitude, longitude });
-
-        const distance = calculateDistance(
-          latitude,
-          longitude,
-          HOSTEL_LOCATION.latitude,
-          HOSTEL_LOCATION.longitude
-        );
-
-        // For demo purposes, we'll consider any location as verified
-        // In production, uncomment the distance check
-        // if (distance <= HOSTEL_LOCATION.radius) {
         setLocationStatus('verified');
-        // } else {
-        //   setLocationStatus('outside');
-        // }
         setIsChecking(false);
       },
       (error) => {
@@ -96,27 +80,35 @@ export const AttendanceCheckIn = () => {
     );
   };
 
-  const handleCheckIn = () => {
-    if (!user || !currentLocation) return;
+  const handleCheckIn = async () => {
+    if (!user || !profile || !currentLocation) return;
 
-    const record: AttendanceRecord = {
-      id: `att-${Date.now()}`,
-      userId: user.id,
-      userName: user.name,
-      roomNumber: user.roomNumber || 'N/A',
-      timestamp: new Date().toISOString(),
-      type: 'check-in',
-      location: currentLocation,
-      verified: true,
-    };
+    try {
+      const record = await addRecord({
+        user_id: user.id,
+        user_name: profile.name,
+        room_number: profile.room_number || 'N/A',
+        timestamp: new Date().toISOString(),
+        type: 'check-in',
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        verified: true,
+        selfie_url: null,
+      });
 
-    addAttendanceRecord(record);
-    setTodayRecord(record);
-    
-    toast({
-      title: 'Check-in Successful! ✓',
-      description: `Attendance marked at ${new Date().toLocaleTimeString()}`,
-    });
+      setTodayRecord(record);
+      
+      toast({
+        title: 'Check-in Successful! ✓',
+        description: `Attendance marked at ${new Date().toLocaleTimeString()}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to check in. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (todayRecord) {
@@ -137,7 +129,7 @@ export const AttendanceCheckIn = () => {
               Checked in at {new Date(todayRecord.timestamp).toLocaleTimeString()}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Location verified • {todayRecord.roomNumber}
+              Location verified • {todayRecord.room_number}
             </p>
           </div>
         </CardContent>
